@@ -6,13 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import axios from "axios";
 import jsPDF from "jspdf";
 import Papa from "papaparse";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTheme } from "next-themes";
-
-const API_KEY = process.env.NEXT_PUBLIC_NEWS_API_KEY; // Fetch API key from .env.local
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchGuardianNews } from '@/lib/guardianSlice';
 
 // Update the CustomPieLabel component
 const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
@@ -38,6 +37,8 @@ const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, n
 
 export default function Dashboard() {
   const { theme } = useTheme();
+  const dispatch = useDispatch();
+  const { articles, loading, error: guardianError } = useSelector((state) => state.guardian);
   const [data, setData] = useState([]);
   const [totalArticles, setTotalArticles] = useState(0);
   const [totalPayout, setTotalPayout] = useState(0);
@@ -45,44 +46,52 @@ export default function Dashboard() {
   const [previewData, setPreviewData] = useState([]);
   const [isExportingToSheets, setIsExportingToSheets] = useState(false);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Load saved payout rates from localStorage if available
     const savedRates = JSON.parse(localStorage.getItem("authorPayoutRates") || "{}");
 
-    // Fetch data from News API with retry mechanism
-    const fetchData = async (retryCount = 0) => {
+    // Fetch Guardian articles with pageSize=10
+    const fetchData = async () => {
       try {
-        setIsLoading(true);
         setError(null);
-        const response = await axios.get(`https://newsapi.org/v2/top-headlines?country=us&apiKey=${API_KEY}`);
-        const articles = response.data.articles;
-        const processedData = articles.map(article => ({
-          author: article.author || "Unknown",
-          articlesCount: 1,
-          payoutRate: savedRates[article.author || "Unknown"] || 20, // Default rate of 20 if not set
-          payout: 1 * (savedRates[article.author || "Unknown"] || 20),
-        }));
-        setData(processedData);
-        setTotalArticles(articles.length);
-        setTotalPayout(processedData.reduce((sum, item) => sum + item.payout, 0));
+        await dispatch(fetchGuardianNews({ pageSize: 10 }));
       } catch (error) {
-        console.error("Error fetching data:", error);
-        if (error.response?.status === 429 && retryCount < 3) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return fetchData(retryCount + 1);
-        }
-        setError(error.response?.status === 429 
-          ? "API rate limit exceeded. Please try again in a few minutes." 
-          : "Error fetching data. Please try again later.");
-      } finally {
-        setIsLoading(false);
+        console.error("Error fetching Guardian data:", error);
+        setError("Error fetching data. Please try again later.");
       }
     };
 
     fetchData();
-  }, []);
+  }, [dispatch]);
+
+  // Process articles when they are loaded
+  useEffect(() => {
+    if (articles.length > 0) {
+      const savedRates = JSON.parse(localStorage.getItem("authorPayoutRates") || "{}");
+      
+      // Group articles by author
+      const authorGroups = articles.reduce((acc, article) => {
+        const author = article.author || "Unknown";
+        if (!acc[author]) {
+          acc[author] = {
+            author,
+            articlesCount: 0,
+            payoutRate: savedRates[author] || 20, // Default rate of 20 if not set
+            payout: 0
+          };
+        }
+        acc[author].articlesCount += 1;
+        acc[author].payout = acc[author].articlesCount * acc[author].payoutRate;
+        return acc;
+      }, {});
+
+      const processedData = Object.values(authorGroups);
+      setData(processedData);
+      setTotalArticles(articles.length);
+      setTotalPayout(processedData.reduce((sum, item) => sum + item.payout, 0));
+    }
+  }, [articles]);
 
   const handlePayoutRateChange = (author, newRate) => {
     const rate = newRate === '' ? 0 : parseInt(newRate) || 0;
@@ -260,9 +269,9 @@ export default function Dashboard() {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
       
-      {error && (
+      {(error || guardianError) && (
         <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
-          <p>{error}</p>
+          <p>{error || guardianError}</p>
           <Button 
             variant="outline" 
             onClick={() => window.location.reload()} 
@@ -273,7 +282,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {isLoading ? (
+      {loading ? (
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>

@@ -1,10 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
-import newsReducer from './newsSlice';
 import userReducer from './userSlice';
+import guardianReducer from './guardianSlice';
 
 export const store = configureStore({
   reducer: {
-    news: newsReducer,
     user: userReducer,
+    guardian: guardianReducer,
   },
 }); 

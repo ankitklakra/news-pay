@@ -2,116 +2,76 @@
 
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchNews, setCategory, setSearchQuery, setAuthor, setDateRange, clearFilters, setPage } from '@/lib/newsSlice';
-import NewsCard from '@/components/NewsCard';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO } from 'date-fns';
-import { CalendarIcon, Search, X } from 'lucide-react';
-
-const CATEGORIES = [
-  'general',
-  'business',
-  'entertainment',
-  'health',
-  'science',
-  'sports',
-  'technology'
-];
+import { fetchGuardianNews, setSearchQuery, setAuthor, setDateRange, clearFilters } from '@/lib/guardianSlice';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Search, User, Calendar as CalendarIcon, X } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const dispatch = useDispatch();
-  const { 
-    articles, 
-    loading, 
-    error, 
-    selectedCategory, 
-    searchQuery,
-    author,
-    dateRange,
-    totalResults,
-    currentPage,
-    pageSize
-  } = useSelector((state) => state.news);
-
+  const { articles, loading, error, totalResults, searchQuery, author, dateRange } = useSelector((state) => state.guardian);
+  
   // Local state for search inputs
-  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
-  const [localAuthorQuery, setLocalAuthorQuery] = useState(author);
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const [localAuthorQuery, setLocalAuthorQuery] = useState('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
-  // Convert ISO strings to Date objects for the calendar
-  const calendarDateRange = {
-    from: dateRange.from ? parseISO(dateRange.from) : null,
-    to: dateRange.to ? parseISO(dateRange.to) : null,
-  };
-
-  // Calculate total pages
-  const totalPages = Math.ceil(totalResults / pageSize);
-
-  // Initial fetch when component mounts
+  // Fetch news on initial load
   useEffect(() => {
-    dispatch(fetchNews({ 
-      category: 'general',
-      params: {
-        articlesCount: 20,
-        articlesSortBy: 'date',
-        articlesSortByAsc: false
-      }
-    }));
-  }, [dispatch]); // Empty dependency array means it runs only once on mount
+    dispatch(fetchGuardianNews({}));
+  }, [dispatch]);
 
-  // Effect for subsequent fetches when filters change
+  // Fetch news when filters change
   useEffect(() => {
-    dispatch(fetchNews({ 
-      category: selectedCategory,
-      searchQuery,
-      dateRange,
-      author,
-      params: {
-        articlesCount: 20,
-        articlesSortBy: 'date',
-        articlesSortByAsc: false
-      }
-    }));
-  }, [dispatch, selectedCategory, searchQuery, dateRange, author]);
-
-  const handleCategoryChange = (category) => {
-    dispatch(setCategory(category));
-  };
+    dispatch(fetchGuardianNews({ searchQuery, author, dateRange }));
+  }, [dispatch, searchQuery, author, dateRange]);
 
   const handleSearch = (e) => {
-    setLocalSearchQuery(e.target.value);
+    e.preventDefault();
+    dispatch(setSearchQuery(localSearchQuery));
   };
 
-  const handleSearchSubmit = (e) => {
+  const handleAuthorSearch = (e) => {
+    e.preventDefault();
+    dispatch(setAuthor(localAuthorQuery));
+  };
+
+  const handleKeyPress = (e, type) => {
     if (e.key === 'Enter') {
-      dispatch(setSearchQuery(localSearchQuery));
-    }
-  };
-
-  const handleAuthorChange = (e) => {
-    setLocalAuthorQuery(e.target.value);
-  };
-
-  const handleAuthorSubmit = (e) => {
-    if (e.key === 'Enter') {
-      dispatch(setAuthor(localAuthorQuery));
+      e.preventDefault();
+      if (type === 'search') {
+        dispatch(setSearchQuery(localSearchQuery));
+      } else if (type === 'author') {
+        dispatch(setAuthor(localAuthorQuery));
+      }
     }
   };
 
   const handleDateRangeSelect = (range) => {
-    if (range?.from) {
-      // Convert Date objects to ISO strings before dispatching
-      const serializedRange = {
-        from: range.from.toISOString(),
-        to: range.to ? range.to.toISOString() : null,
-      };
-      dispatch(setDateRange(serializedRange));
-      setIsDatePickerOpen(false); // Close the date picker after selection
+    if (!range) {
+      dispatch(setDateRange({ from: null, to: null }));
+      setIsDatePickerOpen(false);
+      return;
     }
+
+    // Ensure we have valid dates
+    const from = range.from ? new Date(range.from) : null;
+    const to = range.to ? new Date(range.to) : null;
+
+    // Convert to ISO strings for Redux
+    const serializedRange = {
+      from: from ? from.toISOString() : null,
+      to: to ? to.toISOString() : null
+    };
+
+    console.log('Setting date range:', serializedRange); // Debug log
+    dispatch(setDateRange(serializedRange));
+    setIsDatePickerOpen(false);
   };
 
   const handleClearFilters = () => {
@@ -120,188 +80,193 @@ export default function Home() {
     setLocalAuthorQuery('');
   };
 
-  const handlePageChange = (newPage) => {
-    dispatch(setPage(newPage));
-    dispatch(fetchNews({ 
-      category: selectedCategory,
-      searchQuery,
-      dateRange,
-      author,
-      page: newPage,
-      params: {
-        articlesCount: pageSize,
-        articlesSortBy: 'date',
-        articlesSortByAsc: false
-      }
-    }));
+  // Convert ISO strings back to Date objects for the Calendar component
+  const calendarDateRange = {
+    from: dateRange.from ? new Date(dateRange.from) : undefined,
+    to: dateRange.to ? new Date(dateRange.to) : undefined
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-destructive text-center">
-          <p className="text-xl font-semibold">{error}</p>
-          <button
-            onClick={() => dispatch(fetchNews({ category: selectedCategory }))}
-            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-background py-8">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col items-center mb-8">
-          <p className="text-muted-foreground mb-4">Total Articles: {totalResults}</p>
-          
-          {/* Search Bar */}
-          <div className="w-full max-w-2xl mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search news... (Press Enter to search)"
-                value={localSearchQuery}
-                onChange={handleSearch}
-                onKeyDown={handleSearchSubmit}
-                className="pl-10 bg-card text-card-foreground"
-              />
-            </div>
-          </div>
+    <main className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8">Latest News</h1>
+      
+      {/* Search and Filters Section */}
+      <Card className="p-6 mb-8">
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Global Search */}
+          <form onSubmit={handleSearch} className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Input
+              type="text"
+              placeholder="Search news... (Press Enter)"
+              value={localSearchQuery}
+              onChange={(e) => setLocalSearchQuery(e.target.value)}
+              onKeyDown={(e) => handleKeyPress(e, 'search')}
+              className="pl-10"
+            />
+          </form>
 
-          {/* Filters */}
-          <Card className="w-full max-w-4xl p-4 mb-6 bg-card text-card-foreground">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Author Filter */}
-              <div>
-                <Input
-                  type="text"
-                  placeholder="Filter by author (Press Enter to search)"
-                  value={localAuthorQuery}
-                  onChange={handleAuthorChange}
-                  onKeyDown={handleAuthorSubmit}
-                  className="bg-card text-card-foreground"
-                />
-              </div>
+          {/* Author Search */}
+          <form onSubmit={handleAuthorSearch} className="relative">
+            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Input
+              type="text"
+              placeholder="Search by author... (Press Enter)"
+              value={localAuthorQuery}
+              onChange={(e) => setLocalAuthorQuery(e.target.value)}
+              onKeyDown={(e) => handleKeyPress(e, 'author')}
+              className="pl-10"
+            />
+          </form>
 
-              {/* Date Range Filter */}
-              <div>
-                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {calendarDateRange.from ? (
-                        calendarDateRange.to ? (
-                          <>
-                            {format(calendarDateRange.from, "LLL dd, y")} -{" "}
-                            {format(calendarDateRange.to, "LLL dd, y")}
-                          </>
-                        ) : (
-                          format(calendarDateRange.from, "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Pick a date range</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={calendarDateRange.from}
-                      selected={calendarDateRange}
-                      onSelect={handleDateRangeSelect}
-                      numberOfMonths={2}
-                      className="rounded-md border bg-card text-card-foreground"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {/* Clear Filters */}
+          {/* Date Range Picker */}
+          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+            <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                onClick={handleClearFilters}
-                className="w-full"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !dateRange.from && "text-muted-foreground"
+                )}
               >
-                <X className="mr-2 h-4 w-4" />
-                Clear Filters
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(new Date(dateRange.from), "LLL dd, y")} -{" "}
+                      {format(new Date(dateRange.to), "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(new Date(dateRange.from), "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pick a date range</span>
+                )}
               </Button>
-            </div>
-          </Card>
-
-          {/* Categories */}
-          <div className="flex flex-wrap gap-2 justify-center mb-6">
-            {CATEGORIES.map((category) => (
-              <Button
-                key={category}
-                onClick={() => handleCategoryChange(category)}
-                variant={selectedCategory === category ? "default" : "outline"}
-                className="capitalize"
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={calendarDateRange.from}
+                selected={calendarDateRange}
+                onSelect={handleDateRangeSelect}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
-        {/* News Grid */}
+        {/* Clear Filters Button */}
+        {(searchQuery || author || dateRange.from) && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              variant="ghost"
+              onClick={handleClearFilters}
+              className="flex items-center gap-2"
+            >
+              <X size={16} />
+              Clear Filters
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      {/* Results Count */}
+      <div className="mb-6">
+        <p className="text-gray-600">Found {totalResults} articles</p>
+      </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center min-h-[200px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-6">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+
+      {/* News Grid */}
+      {!loading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {articles.map((article, index) => (
-            <NewsCard key={index} article={article} />
+            <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
+              {article.urlToImage && (
+                <div className="relative w-full h-48">
+                  <img
+                    src={article.urlToImage}
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = 'https://placehold.co/600x400?text=No+Image+Available';
+                    }}
+                  />
+                  {article.source.name === 'The Guardian' && (
+                    <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded text-sm">
+                      Guardian
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="p-4">
+                <h2 className="text-xl font-semibold mb-2 line-clamp-2 hover:text-blue-600">
+                  <a href={article.url} target="_blank" rel="noopener noreferrer">
+                    {article.title}
+                  </a>
+                </h2>
+                {article.description && (
+                  <p className="text-gray-600 mb-4 line-clamp-3">{article.description}</p>
+                )}
+                <div className="flex flex-col gap-2 text-sm text-gray-500">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">{article.source.name}</span>
+                    <span>{new Date(article.publishedAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}</span>
+                  </div>
+                  {article.author && (
+                    <p className="text-sm text-gray-500">
+                      By {article.author.replace(/^By\s+/i, '')}
+                    </p>
+                  )}
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    Read full article
+                    <svg
+                      className="ml-1 w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14 5l7 7m0 0l-7 7m7-7H3"
+                      />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            </Card>
           ))}
         </div>
-
-        {articles.length === 0 && (
-          <div className="text-center text-muted-foreground mt-8">
-            No articles found for the selected filters.
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-8">
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <div className="flex items-center gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  onClick={() => handlePageChange(page)}
-                  className="w-10 h-10"
-                >
-                  {page}
-                </Button>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        )}
-      </div>
+      )}
     </main>
   );
 }
