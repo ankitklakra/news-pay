@@ -2,6 +2,10 @@
 
 A modern web application that integrates with The Guardian API to fetch news articles, analyze author performance, and manage article payouts.
 
+## Live Demo
+
+Check out the live application at: [https://news-pay.netlify.app/](https://news-pay.netlify.app/)
+
 ## Features
 
 ### News Feed
@@ -78,7 +82,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/news-pay.git
+git clone https://github.com/ankitklakra/news-pay.git
 cd news-pay
 ```
 
@@ -161,8 +165,6 @@ The application uses Firebase for backend services:
 - User session management
 - Protected routes
 
-```
-
 ## API Integration
 
 ### Guardian API
@@ -183,7 +185,13 @@ Firebase services are integrated for:
 
 ## Deployment
 
-### Firebase Hosting
+### Netlify Deployment
+The application is currently deployed on Netlify. You can access the live version at:
+[https://news-pay.netlify.app/](https://news-pay.netlify.app/)
+
+### Firebase Hosting (Alternative)
+You can also deploy the application to Firebase Hosting:
+
 1. Build the application:
 ```bash
 npm run build
