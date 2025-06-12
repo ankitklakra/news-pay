@@ -111,24 +111,78 @@ yarn dev
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js app directory
-│   ├── page.js            # Home page with news feed
-│   ├── dashboard/         # Dashboard page
-│   └── layout.js          # Root layout
-├── components/            # Reusable components
-│   ├── ui/               # UI components
-│   └── NewsCard.js       # News article card component
-├── lib/                  # Utility functions and Redux store
-│   ├── guardianSlice.js  # Guardian API integration
-│   ├── store.js          # Redux store configuration
-│   ├── firebase.js       # Firebase configuration
-│   └── utils.js          # Utility functions
-├── firebase/             # Firebase related files
-│   ├── functions/        # Cloud Functions
-│   └── rules/           # Security rules
-└── styles/              # Global styles
+news-pay/
+├── src/                      # Source code directory
+│   ├── app/                 # Next.js app directory
+│   │   ├── admin/          # Admin dashboard pages
+│   │   ├── api/            # API routes
+│   │   ├── dashboard/      # User dashboard pages
+│   │   ├── login/          # Login page
+│   │   ├── register/       # Registration page
+│   │   ├── globals.css     # Global styles
+│   │   ├── layout.js       # Root layout component
+│   │   ├── page.js         # Home page
+│   │   └── providers.js    # App providers (Redux, Theme)
+│   │
+│   ├── components/         # Reusable components
+│   │   ├── ui/            # UI components (shadcn/ui)
+│   │   ├── Navbar.js      # Navigation component
+│   │   ├── NavbarWrapper.jsx # Navbar wrapper component
+│   │   ├── NewsCard.js    # News article card component
+│   │   ├── theme-toggle.js # Theme toggle component
+│   │   └── theme-provider.js # Theme provider component
+│   │
+│   └── lib/               # Utility functions and state management
+│       ├── admin.js       # Admin-related utilities
+│       ├── firebase.js    # Firebase configuration
+│       ├── guardianSlice.js # Guardian API Redux slice
+│       ├── store.js       # Redux store configuration
+│       ├── userSlice.js   # User state Redux slice
+│       └── utils.js       # Utility functions
+│
+├── public/                # Static files
+├── .next/                # Next.js build output
+├── node_modules/         # Dependencies
+├── .gitignore           # Git ignore file
+├── components.json      # shadcn/ui components configuration
+├── eslint.config.mjs    # ESLint configuration
+├── jsconfig.json        # JavaScript configuration
+├── netlify.toml         # Netlify deployment configuration
+├── next.config.mjs      # Next.js configuration
+├── package.json         # Project dependencies and scripts
+├── postcss.config.mjs   # PostCSS configuration
+└── README.md            # Project documentation
 ```
+
+### Key Directories and Files
+
+#### App Directory (`src/app/`)
+- **Home Page (`page.js`)**: Main landing page with news feed
+- **Dashboard (`dashboard/`)**: User analytics and payout management
+- **Admin (`admin/`)**: Administrative interface
+- **Authentication**: Login and registration pages
+- **API Routes**: Backend API endpoints
+- **Layout**: Root layout with providers and global styles
+
+#### Components (`src/components/`)
+- **UI Components**: Reusable UI elements using shadcn/ui
+- **Navbar**: Navigation component with theme toggle
+- **NewsCard**: Article display component
+- **Theme Components**: Dark/light mode functionality
+
+#### Library (`src/lib/`)
+- **Redux Store**: State management setup
+- **Firebase**: Firebase configuration and utilities
+- **Guardian API**: News API integration
+- **User Management**: Authentication and user state
+- **Admin Utilities**: Administrative functions
+
+#### Configuration Files
+- **Next.js Config**: Framework configuration
+- **Netlify Config**: Deployment settings
+- **ESLint**: Code linting rules
+- **PostCSS**: CSS processing
+- **Package.json**: Dependencies and scripts
 
 ## Features in Detail
 
